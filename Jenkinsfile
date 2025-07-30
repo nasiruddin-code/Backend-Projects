@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     parameters {
-        string(name: 'DEPLOY_VERSION', defaultValue: 'latest', description: 'Version of the app to deploy')
+        string(name: 'DEPLOY_VERSION', defaultValue: 'v1.0.0', description: 'Version of the app to deploy')
         string(name: 'BRANCH_NAME', defaultValue: 'main', description: 'Git branch to build from')
         choice(name: 'ENV', choices: ['dev', 'staging', 'prod'], description: 'Target environment')
     }
