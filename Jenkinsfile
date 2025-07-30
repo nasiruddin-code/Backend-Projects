@@ -26,15 +26,15 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                sh "docker build -t $DOCKER_IMAGE ."
+                bat "docker build -t $DOCKER_IMAGE ."
             }
         }
 
         stage('Push Docker Image') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh "echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin"
-                    sh "docker push $DOCKER_IMAGE"
+                    bat "echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin"
+                    bat "docker push $DOCKER_IMAGE"
                 }
             }
         }
@@ -42,7 +42,7 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 sshagent(credentials: ['jenkins-ssh-key']) {
-                    sh '''
+                    bat '''
                         ssh -o StrictHostKeyChecking=no ubuntu@35.173.186.28 '
                             docker pull $DOCKER_IMAGE || exit 1
                             docker stop hotelbooking || true
@@ -59,7 +59,7 @@ pipeline {
         success {
             echo 'Deployment successful. Tagging backup image.'
             sshagent(credentials: ['jenkins-ssh-key']) {
-                sh '''
+                bat '''
                     ssh -o StrictHostKeyChecking=no ubuntu@35.173.186.28 '
                         docker tag $DOCKER_IMAGE nasiruddincode/hotelbooking:backup
                         docker push your-dockerhub-username/hotelbooking:backup
@@ -71,7 +71,7 @@ pipeline {
         failure {
             echo 'Deployment failed. Rolling back to previous working version.'
             sshagent(credentials: ['jenkins-ssh-key']) {
-                sh '''
+                bat '''
                     ssh -o StrictHostKeyChecking=no ubuntu@35.173.186.28 '
                         docker stop hotelbooking || true
                         docker rm hotelbooking || true
