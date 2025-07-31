@@ -45,7 +45,7 @@ pipeline {
             steps {
                 script {
                     def deployCommand = '''
-                        docker pull your-docker-user/hotelbooking:v1.0.0 || exit 1
+                        docker pull nasiruddincode/hotelbooking:v1.0.0 || exit 1
                         docker stop hotelbooking || true
                         docker rm hotelbooking || true
                         docker run -d --name hotelbooking -p 8080:8080 nasiruddincode/hotelbooking:v1.0.0
