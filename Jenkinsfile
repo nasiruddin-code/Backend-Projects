@@ -46,9 +46,8 @@ pipeline {
 
         stage('Test SSH Connection') {
             steps {
-                script {
-                    def sshTestCmd = "ssh -o StrictHostKeyChecking=no -i \"${env.SSH_KEY_PATH}\" ${env.EC2_HOST} \"echo SSH connection successful\""
-                    bat sshTestCmd
+                sshagent(credentials: ['jenkins-ssh-key']) {
+                    bat 'ssh -o StrictHostKeyChecking=no ubuntu@35.173.186.28 "echo SSH connection successful"'
                 }
             }
         }
