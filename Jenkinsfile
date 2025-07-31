@@ -51,7 +51,7 @@ pipeline {
                         docker run -d --name hotelbooking -p 8083:8080 nasiruddincode/hotelbooking:v1.0.0
                     '''
                     bat """
-                        ssh -o StrictHostKeyChecking=no -i C:\\Users\\Admin\\Downloads\\github-actions.pem @ubuntu@35.173.186.28 "${deployCommand}"
+                        ssh -o StrictHostKeyChecking=no -i C:\\Users\\Admin\\Downloads\\github-actions.pem ubuntu@35.173.186.28 "${deployCommand}"
 
                     """
                 }
