@@ -44,15 +44,17 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 sshagent(credentials: ['jenkins-ssh-key']) {
-                   def deployCommand = """
-                        ssh -o StrictHostKeyChecking=no ubuntu@35.173.186.28 '
-                            docker pull ${env.DOCKER_IMAGE} &&
-                            docker stop hotelbooking || true &&
-                            docker rm hotelbooking || true &&
-                            docker run -d --name hotelbooking -p 8080:8080 ${env.DOCKER_IMAGE}
-                        '
-                    """
-                    bat label: 'Deploying to EC2', script: deployCommand
+                    script {
+                        def deployCommand = """
+                                ssh -o StrictHostKeyChecking=no ubuntu@35.173.186.28 '
+                                    docker pull ${env.DOCKER_IMAGE} &&
+                                    docker stop hotelbooking || true &&
+                                    docker rm hotelbooking || true &&
+                                    docker run -d --name hotelbooking -p 8080:8080 ${env.DOCKER_IMAGE}
+                                '
+                            """
+                            bat label: 'Deploying to EC2', script: deployCommand
+                    }
                 }
             }
         }
