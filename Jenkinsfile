@@ -43,23 +43,28 @@ pipeline {
                 }
             }
         }
+
         stage('Test SSH Connection') {
             steps {
-                bat """
-                    ssh -o StrictHostKeyChecking=no -i "%SSH_KEY_PATH%" %SSH_USER%@%SSH_HOST% "echo SSH connection successful"
-                """
+                script {
+                    def sshTestCmd = "ssh -o StrictHostKeyChecking=no -i \"${env.SSH_KEY_PATH}\" ${env.EC2_HOST} \"echo SSH connection successful\""
+                    bat sshTestCmd
+                }
             }
         }
 
         stage('Deploy to EC2') {
             steps {
-                bat """
-                    ssh -o StrictHostKeyChecking=no -i "%SSH_KEY_PATH%" %EC2_HOST% ^
-                    "docker pull %DOCKER_IMAGE% && \
-                    docker stop hotelbooking || true && \
-                    docker rm hotelbooking || true && \
-                    docker run -d --name hotelbooking -p 8083:8080 %DOCKER_IMAGE%"
-                """
+                script {
+                    def deployCmd = """
+                        ssh -o StrictHostKeyChecking=no -i "${env.SSH_KEY_PATH}" ${env.EC2_HOST} ^
+                        "docker pull ${env.DOCKER_IMAGE} && ^
+                        docker stop hotelbooking || true && ^
+                        docker rm hotelbooking || true && ^
+                        docker run -d --name hotelbooking -p 8083:8080 ${env.DOCKER_IMAGE}"
+                    """
+                    bat deployCmd
+                }
             }
         }
     }
@@ -67,21 +72,27 @@ pipeline {
     post {
         success {
             echo '✅ Deployment successful. Tagging backup image.'
-            bat """
-                ssh -o StrictHostKeyChecking=no -i "%SSH_KEY_PATH%" %EC2_HOST% ^
-                "docker tag %DOCKER_IMAGE% nasiruddincode/hotelbooking:backup && \
-                docker push nasiruddincode/hotelbooking:backup"
-            """
+            script {
+                def tagBackupCmd = """
+                    ssh -o StrictHostKeyChecking=no -i "${env.SSH_KEY_PATH}" ${env.EC2_HOST} ^
+                    "docker tag ${env.DOCKER_IMAGE} nasiruddincode/hotelbooking:backup && ^
+                    docker push nasiruddincode/hotelbooking:backup"
+                """
+                bat tagBackupCmd
+            }
         }
 
         failure {
             echo '⚠️ Deployment failed. Rolling back to previous working version.'
-            bat """
-                ssh -o StrictHostKeyChecking=no -i "%SSH_KEY_PATH%" %EC2_HOST% ^
-                "docker stop hotelbooking || true && \
-                docker rm hotelbooking || true && \
-                docker run -d --name hotelbooking -p 8083:8080 nasiruddincode/hotelbooking:backup"
-            """
+            script {
+                def rollbackCmd = """
+                    ssh -o StrictHostKeyChecking=no -i "${env.SSH_KEY_PATH}" ${env.EC2_HOST} ^
+                    "docker stop hotelbooking || true && ^
+                    docker rm hotelbooking || true && ^
+                    docker run -d --name hotelbooking -p 8083:8080 nasiruddincode/hotelbooking:backup"
+                """
+                bat rollbackCmd
+            }
         }
     }
 }
