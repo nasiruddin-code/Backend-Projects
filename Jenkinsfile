@@ -10,6 +10,8 @@ pipeline {
     environment {
         DEPLOY_VERSION = "${params.DEPLOY_VERSION}"
         DOCKER_IMAGE = "nasiruddincode/hotelbooking:${params.DEPLOY_VERSION}"
+        SSH_KEY_PATH = "C:\\Users\\Admin\\Downloads\\github-actions.pem"
+        EC2_HOST = "ubuntu@35.173.186.28"
     }
 
     stages {
@@ -45,11 +47,11 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 bat """
-                    ssh -o StrictHostKeyChecking=no -i C:\\Users\\Admin\\Downloads\\github-actions.pem ubuntu@35.173.186.28 ^
-                    "docker pull nasiruddincode/hotelbooking:%DEPLOY_VERSION% && ^
-                    docker stop hotelbooking || exit /b 0 && ^
-                    docker rm hotelbooking || exit /b 0 && ^
-                    docker run -d --name hotelbooking -p 8083:8080 nasiruddincode/hotelbooking:%DEPLOY_VERSION%"
+                    ssh -o StrictHostKeyChecking=no -i "%SSH_KEY_PATH%" %EC2_HOST% ^
+                    "docker pull %DOCKER_IMAGE% && \
+                    docker stop hotelbooking || true && \
+                    docker rm hotelbooking || true && \
+                    docker run -d --name hotelbooking -p 8083:8080 %DOCKER_IMAGE%"
                 """
             }
         }
@@ -59,8 +61,8 @@ pipeline {
         success {
             echo '✅ Deployment successful. Tagging backup image.'
             bat """
-                ssh -o StrictHostKeyChecking=no -i C:\\Users\\Admin\\Downloads\\github-actions.pem ubuntu@35.173.186.28 ^
-                "docker tag nasiruddincode/hotelbooking:%DEPLOY_VERSION% nasiruddincode/hotelbooking:backup && ^
+                ssh -o StrictHostKeyChecking=no -i "%SSH_KEY_PATH%" %EC2_HOST% ^
+                "docker tag %DOCKER_IMAGE% nasiruddincode/hotelbooking:backup && \
                 docker push nasiruddincode/hotelbooking:backup"
             """
         }
@@ -68,9 +70,9 @@ pipeline {
         failure {
             echo '⚠️ Deployment failed. Rolling back to previous working version.'
             bat """
-                ssh -o StrictHostKeyChecking=no -i C:\\Users\\Admin\\Downloads\\github-actions.pem ubuntu@35.173.186.28 ^
-                "docker stop hotelbooking || exit /b 0 && ^
-                docker rm hotelbooking || exit /b 0 && ^
+                ssh -o StrictHostKeyChecking=no -i "%SSH_KEY_PATH%" %EC2_HOST% ^
+                "docker stop hotelbooking || true && \
+                docker rm hotelbooking || true && \
                 docker run -d --name hotelbooking -p 8083:8080 nasiruddincode/hotelbooking:backup"
             """
         }
