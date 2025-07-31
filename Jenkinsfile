@@ -10,7 +10,6 @@ pipeline {
     environment {
         DEPLOY_VERSION = "${params.DEPLOY_VERSION}"
         DOCKER_IMAGE = "nasiruddincode/hotelbooking:${params.DEPLOY_VERSION}"
-        SSH_KEY_PATH = "C:\\Jenkins\\ssh\\github-actions.pem"
         EC2_HOST = "ubuntu@35.173.186.28"
     }
 
@@ -47,22 +46,20 @@ pipeline {
         stage('Test SSH Connection') {
             steps {
                 sshagent(credentials: ['jenkins-ssh-key']) {
-                    bat 'ssh -o StrictHostKeyChecking=no ubuntu@35.173.186.28 "echo SSH connection successful"'
+                    bat 'ssh -o StrictHostKeyChecking=no %EC2_HOST% "echo SSH connection successful"'
                 }
             }
         }
 
         stage('Deploy to EC2') {
             steps {
-                script {
-                    def deployCmd = """
-                        ssh -o StrictHostKeyChecking=no -i "${env.SSH_KEY_PATH}" ${env.EC2_HOST} ^
-                        "docker pull ${env.DOCKER_IMAGE} && ^
-                        docker stop hotelbooking || true && ^
-                        docker rm hotelbooking || true && ^
-                        docker run -d --name hotelbooking -p 8083:8080 ${env.DOCKER_IMAGE}"
-                    """
-                    bat deployCmd
+                sshagent(credentials: ['jenkins-ssh-key']) {
+                    bat '''
+                        ssh -o StrictHostKeyChecking=no %EC2_HOST% "
+                            docker pull %DOCKER_IMAGE% &&
+                            docker rm -f hotelbooking || true &&
+                            docker run -d --name hotelbooking -p 8083:8080 %DOCKER_IMAGE%"
+                    '''
                 }
             }
         }
@@ -71,26 +68,23 @@ pipeline {
     post {
         success {
             echo '✅ Deployment successful. Tagging backup image.'
-            script {
-                def tagBackupCmd = """
-                    ssh -o StrictHostKeyChecking=no -i "${env.SSH_KEY_PATH}" ${env.EC2_HOST} ^
-                    "docker tag ${env.DOCKER_IMAGE} nasiruddincode/hotelbooking:backup && ^
-                    docker push nasiruddincode/hotelbooking:backup"
-                """
-                bat tagBackupCmd
+            sshagent(credentials: ['jenkins-ssh-key']) {
+                bat '''
+                    ssh -o StrictHostKeyChecking=no %EC2_HOST% "
+                        docker tag %DOCKER_IMAGE% nasiruddincode/hotelbooking:backup &&
+                        docker push nasiruddincode/hotelbooking:backup"
+                '''
             }
         }
 
         failure {
             echo '⚠️ Deployment failed. Rolling back to previous working version.'
-            script {
-                def rollbackCmd = """
-                    ssh -o StrictHostKeyChecking=no -i "${env.SSH_KEY_PATH}" ${env.EC2_HOST} ^
-                    "docker stop hotelbooking || true && ^
-                    docker rm hotelbooking || true && ^
-                    docker run -d --name hotelbooking -p 8083:8080 nasiruddincode/hotelbooking:backup"
-                """
-                bat rollbackCmd
+            sshagent(credentials: ['jenkins-ssh-key']) {
+                bat '''
+                    ssh -o StrictHostKeyChecking=no %EC2_HOST% "
+                        docker rm -f hotelbooking || true &&
+                        docker run -d --name hotelbooking -p 8083:8080 nasiruddincode/hotelbooking:backup"
+                '''
             }
         }
     }
