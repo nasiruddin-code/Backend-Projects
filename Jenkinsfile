@@ -10,7 +10,7 @@ pipeline {
     environment {
         DEPLOY_VERSION = "${params.DEPLOY_VERSION}"
         DOCKER_IMAGE = "nasiruddincode/hotelbooking:${params.DEPLOY_VERSION}"
-        EC2_HOST = "ubuntu@35.173.186.28"
+        EC2_HOST = "ubuntu@52.207.126.136"
         DEPLOY_STATUS = "SUCCESS"
     }
 
