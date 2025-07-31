@@ -8,6 +8,7 @@ pipeline {
     }
 
     environment {
+        DEPLOY_VERSION = "${params.DEPLOY_VERSION}"
         DOCKER_IMAGE = "nasiruddincode/hotelbooking:${params.DEPLOY_VERSION}"
     }
 
@@ -46,8 +47,8 @@ pipeline {
                 bat """
                     ssh -o StrictHostKeyChecking=no -i C:\\Users\\Admin\\Downloads\\github-actions.pem ubuntu@35.173.186.28 ^
                     "docker pull nasiruddincode/hotelbooking:%DEPLOY_VERSION% && ^
-                    docker stop hotelbooking || true && ^
-                    docker rm hotelbooking || true && ^
+                    docker stop hotelbooking || exit /b 0 && ^
+                    docker rm hotelbooking || exit /b 0 && ^
                     docker run -d --name hotelbooking -p 8083:8080 nasiruddincode/hotelbooking:%DEPLOY_VERSION%"
                 """
             }
@@ -56,7 +57,7 @@ pipeline {
 
     post {
         success {
-            echo 'Deployment successful. Tagging backup image.'
+            echo '✅ Deployment successful. Tagging backup image.'
             bat """
                 ssh -o StrictHostKeyChecking=no -i C:\\Users\\Admin\\Downloads\\github-actions.pem ubuntu@35.173.186.28 ^
                 "docker tag nasiruddincode/hotelbooking:%DEPLOY_VERSION% nasiruddincode/hotelbooking:backup && ^
@@ -65,11 +66,11 @@ pipeline {
         }
 
         failure {
-            echo 'Deployment failed. Rolling back to previous working version.'
+            echo '⚠️ Deployment failed. Rolling back to previous working version.'
             bat """
                 ssh -o StrictHostKeyChecking=no -i C:\\Users\\Admin\\Downloads\\github-actions.pem ubuntu@35.173.186.28 ^
-                "docker stop hotelbooking || true && ^
-                docker rm hotelbooking || true && ^
+                "docker stop hotelbooking || exit /b 0 && ^
+                docker rm hotelbooking || exit /b 0 && ^
                 docker run -d --name hotelbooking -p 8083:8080 nasiruddincode/hotelbooking:backup"
             """
         }
