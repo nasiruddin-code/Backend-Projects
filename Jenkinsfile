@@ -14,7 +14,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: params.BRANCH_NAME, url: 'https://github.com/nasiruddin-code/Backend-Projects.git'
+                git branch: "${params.BRANCH_NAME}", url: 'https://github.com/nasiruddin-code/Backend-Projects.git'
             }
         }
 
@@ -26,7 +26,7 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                bat "docker build -t $DOCKER_IMAGE ."
+                bat "docker build -t %DOCKER_IMAGE% ."
             }
         }
 
@@ -43,18 +43,13 @@ pipeline {
 
         stage('Deploy to EC2') {
             steps {
-                script {
-                    def deployCommand = '''
-                        docker pull nasiruddincode/hotelbooking:v1.0.0 || exit 1
-                        docker stop hotelbooking || exit /b 0
-                        docker rm hotelbooking || exit /b 0
-                        docker run -d --name hotelbooking -p 8083:8080 nasiruddincode/hotelbooking:v1.0.0
-                    '''
-                    bat """
-                        ssh -o StrictHostKeyChecking=no -i C:\\Users\\Admin\\Downloads\\github-actions.pem ubuntu@35.173.186.28 "${deployCommand}"
-
-                    """
-                }
+                bat """
+                    ssh -o StrictHostKeyChecking=no -i C:\\Users\\Admin\\Downloads\\github-actions.pem ubuntu@35.173.186.28 ^
+                    "docker pull nasiruddincode/hotelbooking:%DEPLOY_VERSION% && ^
+                    docker stop hotelbooking || true && ^
+                    docker rm hotelbooking || true && ^
+                    docker run -d --name hotelbooking -p 8083:8080 nasiruddincode/hotelbooking:%DEPLOY_VERSION%"
+                """
             }
         }
     }
@@ -62,29 +57,21 @@ pipeline {
     post {
         success {
             echo 'Deployment successful. Tagging backup image.'
-            sshagent(credentials: ['jenkins-ssh-key']) {
-                bat '''
-                    ssh -o StrictHostKeyChecking=no ubuntu@35.173.186.28 '
-                        docker tag $DOCKER_IMAGE nasiruddincode/hotelbooking:backup
-                        docker push nasiruddincode/hotelbooking:backup
-                    '
-                '''
-            }
+            bat """
+                ssh -o StrictHostKeyChecking=no -i C:\\Users\\Admin\\Downloads\\github-actions.pem ubuntu@35.173.186.28 ^
+                "docker tag nasiruddincode/hotelbooking:%DEPLOY_VERSION% nasiruddincode/hotelbooking:backup && ^
+                docker push nasiruddincode/hotelbooking:backup"
+            """
         }
 
         failure {
             echo 'Deployment failed. Rolling back to previous working version.'
-            sshagent(credentials: ['jenkins-ssh-key']) {
-                bat '''
-                    ssh -o StrictHostKeyChecking=no ubuntu@35.173.186.28 '
-                        docker stop hotelbooking || exit /b 0
-                        docker rm hotelbooking || exit /b 0
-                        docker run -d --name hotelbooking -p 8083:8080 nasiruddincode/hotelbooking:backup || echo "Rollback failed."
-                    '
-                '''
-            }
+            bat """
+                ssh -o StrictHostKeyChecking=no -i C:\\Users\\Admin\\Downloads\\github-actions.pem ubuntu@35.173.186.28 ^
+                "docker stop hotelbooking || true && ^
+                docker rm hotelbooking || true && ^
+                docker run -d --name hotelbooking -p 8083:8080 nasiruddincode/hotelbooking:backup"
+            """
         }
     }
 }
-
-
