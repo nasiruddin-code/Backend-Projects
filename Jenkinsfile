@@ -46,9 +46,9 @@ pipeline {
                 script {
                     def deployCommand = '''
                         docker pull nasiruddincode/hotelbooking:v1.0.0 || exit 1
-                        docker stop hotelbooking || true
-                        docker rm hotelbooking || true
-                        docker run -d --name hotelbooking -p 8080:8080 nasiruddincode/hotelbooking:v1.0.0
+                        docker stop hotelbooking || exit /b 0
+                        docker rm hotelbooking || exit /b 0
+                        docker run -d --name hotelbooking -p 8083:8080 nasiruddincode/hotelbooking:v1.0.0
                     '''
                     bat """
                         ssh -o StrictHostKeyChecking=no -i C:\\Users\\Admin\\Downloads\\github-actions.pem @ubuntu@35.173.186.28 "${deployCommand}"
@@ -77,9 +77,9 @@ pipeline {
             sshagent(credentials: ['jenkins-ssh-key']) {
                 bat '''
                     ssh -o StrictHostKeyChecking=no ubuntu@35.173.186.28 '
-                        docker stop hotelbooking || true
-                        docker rm hotelbooking || true
-                        docker run -d --name hotelbooking -p 8080:8080 nasiruddincode/hotelbooking:backup || echo "Rollback failed."
+                        docker stop hotelbooking || exit /b 0
+                        docker rm hotelbooking || exit /b 0
+                        docker run -d --name hotelbooking -p 8083:8080 nasiruddincode/hotelbooking:backup || echo "Rollback failed."
                     '
                 '''
             }
