@@ -43,6 +43,13 @@ pipeline {
                 }
             }
         }
+        stage('Test SSH Connection') {
+            steps {
+                bat """
+                    ssh -o StrictHostKeyChecking=no -i "%SSH_KEY_PATH%" %SSH_USER%@%SSH_HOST% "echo SSH connection successful"
+                """
+            }
+        }
 
         stage('Deploy to EC2') {
             steps {
