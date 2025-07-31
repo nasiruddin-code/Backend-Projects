@@ -10,7 +10,7 @@ pipeline {
     environment {
         DEPLOY_VERSION = "${params.DEPLOY_VERSION}"
         DOCKER_IMAGE = "nasiruddincode/hotelbooking:${params.DEPLOY_VERSION}"
-        SSH_KEY_PATH = "C:\\Program Files\\Jenkins\\ssh\\github-actions.pem"
+        SSH_KEY_PATH = "C:\\Jenkins\\ssh\\github-actions.pem"
         EC2_HOST = "ubuntu@35.173.186.28"
     }
 
