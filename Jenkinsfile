@@ -44,14 +44,15 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 sshagent(credentials: ['jenkins-ssh-key']) {
-                    bat '''
-                        ssh -o StrictHostKeyChecking=no ubuntu@35.173.186.28 '
-                            docker pull $DOCKER_IMAGE || exit 1
-                            docker stop hotelbooking || true
-                            docker rm hotelbooking || true
-                            docker run -d --name hotelbooking -p 8080:8080 $DOCKER_IMAGE || exit 1
-                        '
-                    '''
+                    bat """
+                        set DOCKER_IMAGE=%DOCKER_IMAGE%
+                        echo Deploying: %DOCKER_IMAGE%
+                        ssh -o StrictHostKeyChecking=no ubuntu@35.173.186.28 ^
+                        "docker pull %DOCKER_IMAGE% || exit 1 && ^
+                        docker stop hotelbooking || true && ^
+                        docker rm hotelbooking || true && ^
+                        docker run -d --name hotelbooking -p 8080:8080 %DOCKER_IMAGE% || exit 1"
+                    """
                 }
             }
         }
@@ -64,7 +65,7 @@ pipeline {
                 bat '''
                     ssh -o StrictHostKeyChecking=no ubuntu@35.173.186.28 '
                         docker tag $DOCKER_IMAGE nasiruddincode/hotelbooking:backup
-                        docker push your-dockerhub-username/hotelbooking:backup
+                        docker push nasiruddincode/hotelbooking:backup
                     '
                 '''
             }
