@@ -10,8 +10,10 @@ pipeline {
     environment {
         DEPLOY_VERSION = "${params.DEPLOY_VERSION}"
         DOCKER_IMAGE = "nasiruddincode/hotelbooking:${params.DEPLOY_VERSION}"
-        EC2_HOST = "ubuntu@52.207.126.136"
+        EC2_HOST = "ubuntu@13.222.233.139"
         DEPLOY_STATUS = "SUCCESS"
+        PEM_PATH = "C:\\Users\\Admin\\.ssh\\newec2pemfile.pem"
+        
     }
 
     stages {
@@ -22,6 +24,19 @@ pipeline {
                 echo "Checkout complete"
             }
         }
+        stage('Debug: Check PEM File Access') {
+            steps {
+                echo "Checking if Jenkins can read PEM file at: ${env.PEM_PATH}"
+                bat "type ${env.PEM_PATH}"
+            }
+        }
+        stage('Debug: Verbose SSH Test') {
+            steps {
+                bat """
+                    ssh -vvv -i "${env.PEM_PATH}" -o StrictHostKeyChecking=no ${env.EC2_HOST} "echo SSH connection successful"
+                """
+            }
+        }
 
         stage('Build with Maven') {
             steps {
@@ -30,6 +45,7 @@ pipeline {
                 echo "Build complete"
             }
         }
+
 
         stage('Build Docker Image') {
             steps {
@@ -52,18 +68,14 @@ pipeline {
                 echo "Docker image pushed"
             }
         }
+        
 
         stage('Test SSH Connection') {
             steps {
-                echo "Testing SSH connection to ${env.EC2_HOST}"
-                sshagent(credentials: ['jenkins-ssh-key']) {
-                    bat '''
-                        echo SSH Agent environment variables:
-                        set SSH_AUTH_SOCK
-                        set SSH_AGENT_PID
-                        ssh -o StrictHostKeyChecking=no %EC2_HOST% "echo SSH connection successful"
-                    '''
-                }
+                echo "Testing SSH connection to ${env.EC2_HOST} using PEM file"
+                bat """
+                    ssh -i \"${env.PEM_PATH}\" -o StrictHostKeyChecking=no ${env.EC2_HOST} "echo SSH connection successful"
+                """
                 echo "SSH connection test complete"
             }
         }
@@ -73,20 +85,15 @@ pipeline {
                 script {
                     echo "Starting deployment to EC2"
                     try {
-                        sshagent(credentials: ['jenkins-ssh-key']) {
-                            bat '''
-                                echo SSH Agent environment variables before deploy:
-                                set SSH_AUTH_SOCK
-                                set SSH_AGENT_PID
-                                ssh -o StrictHostKeyChecking=no %EC2_HOST% "
-                                    echo Pulling Docker image %DOCKER_IMAGE% &&
-                                    docker pull %DOCKER_IMAGE% &&
-                                    echo Stopping and removing old container &&
-                                    docker rm -f hotelbooking || true &&
-                                    echo Running new container &&
-                                    docker run -d --name hotelbooking -p 8083:8080 %DOCKER_IMAGE%"
-                            '''
-                        }
+                        bat """
+                            ssh -i \"${env.PEM_PATH}\" -o StrictHostKeyChecking=no ${env.EC2_HOST} \"
+                                echo Pulling Docker image ${env.DOCKER_IMAGE} &&
+                                docker pull ${env.DOCKER_IMAGE} &&
+                                echo Stopping and removing old container &&
+                                docker rm -f hotelbooking || true &&
+                                echo Running new container &&
+                                docker run -d --name hotelbooking -p 8083:8080 ${env.DOCKER_IMAGE}\"
+                        """
                         echo "Deployment stage completed successfully"
                     } catch (e) {
                         echo "Deployment failed with error: ${e}"
@@ -103,16 +110,11 @@ pipeline {
             }
             steps {
                 echo '✅ Deployment successful. Tagging backup image.'
-                sshagent(credentials: ['jenkins-ssh-key']) {
-                    bat '''
-                        echo SSH Agent environment variables before tagging backup:
-                        set SSH_AUTH_SOCK
-                        set SSH_AGENT_PID
-                        ssh -o StrictHostKeyChecking=no %EC2_HOST% "
-                            docker tag %DOCKER_IMAGE% nasiruddincode/hotelbooking:backup &&
-                            docker push nasiruddincode/hotelbooking:backup"
-                    '''
-                }
+                bat """
+                    ssh -i \"${env.PEM_PATH}\" -o StrictHostKeyChecking=no ${env.EC2_HOST} \"
+                        docker tag ${env.DOCKER_IMAGE} nasiruddincode/hotelbooking:backup &&
+                        docker push nasiruddincode/hotelbooking:backup\"
+                """
             }
         }
 
@@ -122,16 +124,11 @@ pipeline {
             }
             steps {
                 echo '⚠️ Rolling back to previous working version.'
-                sshagent(credentials: ['jenkins-ssh-key']) {
-                    bat '''
-                        echo SSH Agent environment variables before rollback:
-                        set SSH_AUTH_SOCK
-                        set SSH_AGENT_PID
-                        ssh -o StrictHostKeyChecking=no %EC2_HOST% "
-                            docker rm -f hotelbooking || true &&
-                            docker run -d --name hotelbooking -p 8083:8080 nasiruddincode/hotelbooking:backup"
-                    '''
-                }
+                bat """
+                    ssh -i \"${env.PEM_PATH}\" -o StrictHostKeyChecking=no ${env.EC2_HOST} \"
+                        docker rm -f hotelbooking || true &&
+                        docker run -d --name hotelbooking -p 8083:8080 nasiruddincode/hotelbooking:backup\"
+                """
             }
         }
     }
